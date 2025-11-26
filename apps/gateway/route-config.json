@@ -1,0 +1,8 @@
+{
+  "routes": [
+    { "path": "/auth", "target": "http://auth-service:8001" },
+    { "path": "/patients", "target": "http://patient-service:8002" },
+    { "path": "/appointments", "target": "http://appointment-service:8003" }
+  ]
+}
+

@@ -1,0 +1,127 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "29092:29092"
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=app
+      - POSTGRES_DB=appdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  auth-service:
+    build: ../apps/auth-service
+    environment:
+      - PORT=8001
+      - JWT_SECRET=devsecret
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=appdb
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=app
+    depends_on:
+      - postgres
+    ports:
+      - "8001:8001"
+
+  patient-service:
+    build: ../apps/patient-service
+    environment:
+      - PORT=8002
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=appdb
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=app
+      - KAFKA_BOOTSTRAP=kafka:9092
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - postgres
+      - kafka
+      - redis
+    ports:
+      - "8002:8002"
+
+  appointment-service:
+    build: ../apps/appointment-service
+    environment:
+      - PORT=8003
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=appdb
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=app
+      - KAFKA_BOOTSTRAP=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+    ports:
+      - "8003:8003"
+
+  notification-service:
+    build: ../apps/notification-service
+    environment:
+      - PORT=9001
+      - KAFKA_BOOTSTRAP=kafka:9092
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - kafka
+      - redis
+    ports:
+      - "9001:9001"
+
+  gateway:
+    build: ../apps/gateway
+    environment:
+      - PORT=8080
+      - ROUTE_CONFIG=/usr/src/app/route-config.json
+    depends_on:
+      - auth-service
+      - patient-service
+      - appointment-service
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build: ../apps/frontend
+    environment:
+      - VITE_API_BASE=http://localhost:8080
+      - VITE_WS_URL=ws://localhost:9001
+    depends_on:
+      - gateway
+      - notification-service
+    ports:
+      - "5173:5173"
+
+volumes:
+  pgdata: {}
