@@ -62,6 +62,7 @@ services:
       - POSTGRES_DB=appdb
       - POSTGRES_USER=app
       - POSTGRES_PASSWORD=app
+      - JWT_SECRET=devsecret
       - KAFKA_BOOTSTRAP=kafka:9092
       - REDIS_HOST=redis
       - REDIS_PORT=6379

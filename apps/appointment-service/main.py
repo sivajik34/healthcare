@@ -51,7 +51,7 @@ app.add_middleware(
 )
 
 
-@app.post("/appointments", response_model=AppointmentView)
+@app.post("/appointments/appointments", response_model=AppointmentView)
 async def create_appointment(payload: AppointmentCreate):
     appt_id = str(uuid.uuid4())
     view = AppointmentView(id=appt_id, patient_id=payload.patient_id, datetime=payload.datetime, reason=payload.reason)
@@ -60,7 +60,7 @@ async def create_appointment(payload: AppointmentCreate):
     return view
 
 
-@app.get("/appointments", response_model=List[AppointmentView])
+@app.get("/appointments/appointments", response_model=List[AppointmentView])
 async def list_appointments():
     # In a real system this would query a read model. Kept in-memory for scaffold simplicity.
     return []
