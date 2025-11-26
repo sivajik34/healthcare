@@ -13,12 +13,17 @@ export default function App() {
   const [wsEvents, setWsEvents] = useState<string[]>([])
 
   useEffect(() => {
-    if (!token) return
-    fetch(`${API_BASE}/patients`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json())
-      .then((data) => setPatients(data))
-      .catch(() => {})
-  }, [token])
+    if (!token) return;
+    fetch(`${API_BASE}/patients/patients`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(async (r) => {
+        const data = await r.json();
+        console.log("PATIENTS RESPONSE:", data);
+        setPatients(Array.isArray(data) ? data : []);
+      })
+      .catch(console.error);
+  }, [token]);
 
   useEffect(() => {
     const ws = new WebSocket(WS_URL)
@@ -57,7 +62,7 @@ export default function App() {
     const name = prompt('Patient name?')
     const dob = prompt('DOB (YYYY-MM-DD)?')
     if (!name || !dob || !token) return
-    const res = await fetch(`${API_BASE}/patients`, {
+    const res = await fetch(`${API_BASE}/patients/patients`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

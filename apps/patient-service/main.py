@@ -63,7 +63,7 @@ app.add_middleware(
 )
 
 
-@app.post("/patients", response_model=PatientView)
+@app.post("/patients/patients", response_model=PatientView)
 async def create_patient(payload: PatientCreate):
     patient_id = str(uuid.uuid4())
     event = {
@@ -78,7 +78,7 @@ async def create_patient(payload: PatientCreate):
     return PatientView(id=patient_id, name=payload.name, dob=payload.dob)
 
 
-@app.get("/patients", response_model=List[PatientView])
+@app.get("/patients/patients", response_model=List[PatientView])
 async def get_patients():
     return [PatientView(**p) for p in list_patients()]
 
