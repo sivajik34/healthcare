@@ -89,7 +89,7 @@ export default function App() {
         </form>
       ) : (
         <div style={{ marginBottom: 16 }}>
-          <button onClick={() => { localStorage.removeItem('token'); setToken(null) }}>Logout</button>
+          <button onClick={() => { localStorage.removeItem('token'); setToken(null); setPatients([]) }}>Logout</button>
           <button onClick={createPatient} style={{ marginLeft: 12 }}>New Patient</button>
         </div>
       )}

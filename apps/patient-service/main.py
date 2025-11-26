@@ -6,10 +6,12 @@ from typing import List
 import contextlib
 
 from aiokafka import AIOKafkaProducer, AIOKafkaConsumer
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
+from fastapi.security import OAuth2PasswordBearer
+from jose import jwt, JWTError
 
 from event_store import init_event_store, append_event
 from read_model import init_read_model, upsert_patient, list_patients
@@ -20,6 +22,10 @@ PATIENT_TOPIC = "patient.events"
 
 producer: AIOKafkaProducer | None = None
 consumer_task: asyncio.Task | None = None
+
+JWT_SECRET = os.getenv("JWT_SECRET", "changeme")
+ALGORITHM = "HS256"
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 
 class PatientCreate(BaseModel):
@@ -63,8 +69,24 @@ app.add_middleware(
 )
 
 
+async def require_user(token: str = Depends(oauth2_scheme)) -> str:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
+        sub = payload.get("sub")
+        if sub is None:
+            raise credentials_exception
+        return str(sub)
+    except JWTError:
+        raise credentials_exception
+
+
 @app.post("/patients/patients", response_model=PatientView)
-async def create_patient(payload: PatientCreate):
+async def create_patient(payload: PatientCreate, user: str = Depends(require_user)):
     patient_id = str(uuid.uuid4())
     event = {
         "type": "PatientCreated",
@@ -79,7 +101,7 @@ async def create_patient(payload: PatientCreate):
 
 
 @app.get("/patients/patients", response_model=List[PatientView])
-async def get_patients():
+async def get_patients(user: str = Depends(require_user)):
     return [PatientView(**p) for p in list_patients()]
 
 async def consume_events():
